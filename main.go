@@ -15,9 +15,18 @@ func main() {
 		userInputClean := cleanInput(userInput)
 		if len(userInputClean) == 0 {
 			fmt.Println("no user input, try again")
+			continue
+		}
+		cliOptions := getCliCommands()
+		cmd, exists := cliOptions[userInputClean[0]]
+		if exists {
+			err := cmd.callback()
+			if err != nil {
+				fmt.Println(err)
+			}
 		} else {
-			fmt.Printf("Your command was: %s\n", userInputClean[0])
+			fmt.Println("Unknown command")
+			continue
 		}
 	}
-
 }
