@@ -8,6 +8,7 @@ import (
 
 func main() {
 	newScanner := bufio.NewScanner(os.Stdin)
+	config := &apiCallConfig{}
 	for {
 		fmt.Print("Pokedex > ")
 		newScanner.Scan()
@@ -17,10 +18,11 @@ func main() {
 			fmt.Println("no user input, try again")
 			continue
 		}
+
 		cliOptions := getCliCommands()
 		cmd, exists := cliOptions[userInputClean[0]]
 		if exists {
-			err := cmd.callback()
+			err := cmd.callback(config)
 			if err != nil {
 				fmt.Println(err)
 			}

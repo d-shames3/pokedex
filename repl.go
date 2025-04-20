@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/d-shames3/pokedex/internal/pokeapi"
 )
 
 func cleanInput(text string) []string {
@@ -12,13 +14,13 @@ func cleanInput(text string) []string {
 	return words
 }
 
-func commandExit() error {
+func commandExit(config *apiCallConfig) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp() error {
+func commandHelp(config *apiCallConfig) error {
 	fmt.Println("Welcome to the Pokedex!\nUsage:")
 	for _, cmd := range getCliCommands() {
 		fmt.Printf("%s: %s\n", cmd.name, cmd.description)
@@ -26,10 +28,97 @@ func commandHelp() error {
 	return nil
 }
 
+func commandMap(config *apiCallConfig) error {
+	if config.Next == "" && config.Previous != "" {
+		fmt.Println("You are on the last page of results")
+		return nil
+	}
+
+	if config.Next == "" && config.Previous == "" {
+		config.Next = "https://pokeapi.co/api/v2/location-area"
+	}
+
+	res, err := pokeapi.CallPokeApi(config.Next)
+	if err != nil {
+		return err
+	}
+	data, err := pokeapi.UnmarshalPokeapiResponse(res)
+	if err != nil {
+		return err
+	}
+
+	if data.Next != "" {
+		config.Next = data.Next
+	} else {
+		config.Next = ""
+	}
+
+	if data.Previous != "" {
+		config.Previous = data.Previous
+	} else {
+		config.Previous = ""
+	}
+
+	results := data.Results
+	if len(results) == 0 {
+		fmt.Println("No results returned")
+		return nil
+	}
+
+	for _, location := range results {
+		fmt.Printf("%s\n", location.Name)
+	}
+	return nil
+}
+
+func commandMapb(config *apiCallConfig) error {
+	if config.Previous == "" {
+		fmt.Println("You are on the first page of results")
+		return nil
+	}
+
+	res, err := pokeapi.CallPokeApi(config.Previous)
+	if err != nil {
+		return err
+	}
+	data, err := pokeapi.UnmarshalPokeapiResponse(res)
+	if err != nil {
+		return err
+	}
+
+	if data.Previous != "" {
+		config.Previous = data.Previous
+	} else {
+		config.Previous = ""
+	}
+
+	if data.Next != "" {
+		config.Next = data.Next
+	} else {
+		config.Next = ""
+	}
+
+	results := data.Results
+	if len(results) == 0 {
+		fmt.Println("No results returned")
+		return nil
+	}
+
+	for _, location := range results {
+		fmt.Printf("%s\n", location.Name)
+	}
+	return nil
+}
+
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(*apiCallConfig) error
+}
+
+type apiCallConfig struct {
+	Next     string
+	Previous string
 }
 
 func getCliCommands() map[string]cliCommand {
@@ -43,6 +132,16 @@ func getCliCommands() map[string]cliCommand {
 			name:        "help",
 			description: "Displays a help message",
 			callback:    commandHelp,
+		},
+		"map": {
+			name:        "map",
+			description: "Fetches next 20 locations from the PokeApi",
+			callback:    commandMap,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Fetches previous 20 locations from the PokeApi",
+			callback:    commandMapb,
 		},
 	}
 	return cliCommands
