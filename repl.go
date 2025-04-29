@@ -88,19 +88,30 @@ func commandMap(cache *pokecache.Cache, config *apiCallConfig) error {
 	return nil
 }
 
+// TODO add caching to mapb command
 func commandMapb(cache *pokecache.Cache, config *apiCallConfig) error {
 	if config.Previous == "" {
 		fmt.Println("You are on the first page of results")
 		return nil
 	}
 
-	res, err := pokeapi.CallPokeApi(config.Previous)
-	if err != nil {
-		return err
-	}
-	data, err := pokeapi.UnmarshalPokeapiResponse(res)
-	if err != nil {
-		return err
+	cachedData, ok := cache.Get(config.Previous)
+	data := pokeapi.PokeapiUnnamedResponse{}
+	if ok {
+		err := json.Unmarshal(cachedData, &data)
+		if err != nil {
+			return fmt.Errorf("error fetching data from the cache")
+		}
+		fmt.Println("Using data from the cache!")
+	} else {
+		res, err := pokeapi.CallPokeApi(config.Previous)
+		if err != nil {
+			return err
+		}
+		data, err = pokeapi.UnmarshalPokeapiResponse(res)
+		if err != nil {
+			return err
+		}
 	}
 
 	if data.Previous != "" {
@@ -142,7 +153,7 @@ func getCliCommands() map[string]cliCommand {
 	cliCommands := map[string]cliCommand{
 		"exit": {
 			name:        "exit",
-			description: "Exit the Pokedex",
+			description: "Exits the Pokedex",
 			callback:    commandExit,
 		},
 		"help": {
