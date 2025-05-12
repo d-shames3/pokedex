@@ -59,7 +59,7 @@ func (c *Cache) reapLoop(interval time.Duration) {
 			for key, entry := range c.entry {
 				if entry.createdAt.Before(cutoff) {
 					delete(c.entry, key)
-					fmt.Printf("Clearing entry %v from cache at %v, cutoff time is %v", key, now, cutoff)
+					fmt.Printf("Clearing entry %v from cache at %v, cutoff time is %v\n", key, now, cutoff)
 				}
 			}
 			c.mu.Unlock()
