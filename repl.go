@@ -88,7 +88,6 @@ func commandMap(cache *pokecache.Cache, config *apiCallConfig) error {
 	return nil
 }
 
-// TODO add caching to mapb command
 func commandMapb(cache *pokecache.Cache, config *apiCallConfig) error {
 	if config.Previous == "" {
 		fmt.Println("You are on the first page of results")
@@ -112,6 +111,11 @@ func commandMapb(cache *pokecache.Cache, config *apiCallConfig) error {
 		if err != nil {
 			return err
 		}
+		dataToCache, err := json.Marshal(data)
+		if err != nil {
+			return fmt.Errorf("error writing data to cache")
+		}
+		cache.Add(config.Previous, dataToCache)
 	}
 
 	if data.Previous != "" {
