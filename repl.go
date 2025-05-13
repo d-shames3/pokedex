@@ -41,7 +41,7 @@ func commandMap(cache *pokecache.Cache, config *apiCallConfig) error {
 	}
 
 	cachedData, ok := cache.Get(config.Next)
-	data := pokeapi.PokeapiUnnamedResponse{}
+	data := pokeapi.LocationResponse{}
 	if ok {
 		err := json.Unmarshal(cachedData, &data)
 		if err != nil {
@@ -53,9 +53,13 @@ func commandMap(cache *pokecache.Cache, config *apiCallConfig) error {
 		if err != nil {
 			return err
 		}
-		data, err = pokeapi.UnmarshalPokeapiResponse(res)
+		result, err := pokeapi.UnmarshalPokeapiResponse(res, "location")
 		if err != nil {
 			return err
+		}
+		data, ok := result.(pokeapi.LocationResponse)
+		if !ok {
+			return fmt.Errorf("unexpected response type")
 		}
 		dataToCache, err := json.Marshal(data)
 		if err != nil {
@@ -95,7 +99,7 @@ func commandMapb(cache *pokecache.Cache, config *apiCallConfig) error {
 	}
 
 	cachedData, ok := cache.Get(config.Previous)
-	data := pokeapi.PokeapiUnnamedResponse{}
+	data := pokeapi.LocationResponse{}
 	if ok {
 		err := json.Unmarshal(cachedData, &data)
 		if err != nil {
@@ -107,9 +111,13 @@ func commandMapb(cache *pokecache.Cache, config *apiCallConfig) error {
 		if err != nil {
 			return err
 		}
-		data, err = pokeapi.UnmarshalPokeapiResponse(res)
+		result, err := pokeapi.UnmarshalPokeapiResponse(res, "location")
 		if err != nil {
 			return err
+		}
+		data, ok := result.(pokeapi.LocationResponse)
+		if !ok {
+			return fmt.Errorf("unexpected response type")
 		}
 		dataToCache, err := json.Marshal(data)
 		if err != nil {
