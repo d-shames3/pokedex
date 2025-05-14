@@ -22,11 +22,14 @@ func main() {
 			fmt.Println("no user input, try again")
 			continue
 		}
+		if len(userInputClean) == 1 {
+			userInputClean = append(userInputClean, "")
+		}
 
 		cliOptions := getCliCommands()
 		cmd, exists := cliOptions[userInputClean[0]]
 		if exists {
-			err := cmd.callback(cache, config)
+			err := cmd.callback(cache, config, userInputClean[1])
 			if err != nil {
 				fmt.Println(err)
 			}
