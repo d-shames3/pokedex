@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/d-shames3/pokedex/internal/pokeapi"
 	"github.com/d-shames3/pokedex/internal/pokecache"
@@ -16,13 +18,13 @@ func cleanInput(text string) []string {
 	return words
 }
 
-func commandExit(cache *pokecache.Cache, config *apiCallConfig, locationArea string) error {
+func commandExit(cache *pokecache.Cache, config *apiCallConfig, locationArea string, pokedex *Pokedex) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(cache *pokecache.Cache, config *apiCallConfig, locationArea string) error {
+func commandHelp(cache *pokecache.Cache, config *apiCallConfig, locationArea string, pokedex *Pokedex) error {
 	fmt.Println("Welcome to the Pokedex!\nUsage:")
 	for _, cmd := range getCliCommands() {
 		fmt.Printf("%s: %s\n", cmd.name, cmd.description)
@@ -30,7 +32,7 @@ func commandHelp(cache *pokecache.Cache, config *apiCallConfig, locationArea str
 	return nil
 }
 
-func commandMap(cache *pokecache.Cache, config *apiCallConfig, locationArea string) error {
+func commandMap(cache *pokecache.Cache, config *apiCallConfig, locationArea string, pokedex *Pokedex) error {
 	if config.Next == "" && config.Previous != "" {
 		fmt.Println("You are on the last page of results")
 		return nil
@@ -93,7 +95,7 @@ func commandMap(cache *pokecache.Cache, config *apiCallConfig, locationArea stri
 	return nil
 }
 
-func commandMapb(cache *pokecache.Cache, config *apiCallConfig, locationArea string) error {
+func commandMapb(cache *pokecache.Cache, config *apiCallConfig, locationArea string, pokedex *Pokedex) error {
 	if config.Previous == "" {
 		fmt.Println("You are on the first page of results")
 		return nil
@@ -152,7 +154,7 @@ func commandMapb(cache *pokecache.Cache, config *apiCallConfig, locationArea str
 	return nil
 }
 
-func commandExplore(cache *pokecache.Cache, config *apiCallConfig, locationArea string) error {
+func commandExplore(cache *pokecache.Cache, config *apiCallConfig, locationArea string, pokedex *Pokedex) error {
 	if locationArea == "" {
 		return fmt.Errorf("no location area to explore specified")
 	}
@@ -202,10 +204,52 @@ func commandExplore(cache *pokecache.Cache, config *apiCallConfig, locationArea 
 	return nil
 }
 
+func commandCatch(cache *pokecache.Cache, config *apiCallConfig, pokemon string, pokedex *Pokedex) error {
+	if pokemon == "" {
+		return fmt.Errorf("no pokemon specified")
+	}
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemon)
+
+	url := "https://pokeapi.co/api/v2/pokemon/" + pokemon
+	res, err := pokeapi.CallPokeApi(url)
+	if err != nil {
+		return err
+	}
+	result, err := pokeapi.UnmarshalPokeapiResponse(res, "pokemon")
+	if err != nil {
+		return err
+	}
+	data, ok := result.(pokeapi.PokemonResponse)
+	if !ok {
+		return fmt.Errorf("unexpected response type")
+	}
+
+	const minBaseXP float64 = 40
+	const maxBaseXP float64 = 635
+	const minMaxScaler float64 = maxBaseXP - minBaseXP
+
+	scaledBE := int(((float64(data.BaseExperience) - minBaseXP) / minMaxScaler) * 100.0)
+	if scaledBE >= 75 {
+		scaledBE = 75
+	} else if scaledBE <= 25 {
+		scaledBE = 25
+	}
+
+	roll := rand.IntN(100)
+	if roll >= scaledBE {
+		fmt.Printf("%s was caught!\n", pokemon)
+		pokedex.Add(pokemon, data)
+	} else {
+		fmt.Printf("%s escaped!\n", pokemon)
+	}
+
+	return nil
+}
+
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*pokecache.Cache, *apiCallConfig, string) error
+	callback    func(*pokecache.Cache, *apiCallConfig, string, *Pokedex) error
 }
 
 type apiCallConfig struct {
@@ -213,8 +257,41 @@ type apiCallConfig struct {
 	Previous string
 }
 
+type Pokedex struct {
+	pokemonEntry map[string]pokeapi.PokemonResponse
+	mu           sync.Mutex
+}
+
+func newPokedex() *Pokedex {
+	newPokedex := &Pokedex{}
+	newPokedex.pokemonEntry = make(map[string]pokeapi.PokemonResponse)
+	return newPokedex
+}
+
+func (p *Pokedex) Add(key string, val pokeapi.PokemonResponse) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.pokemonEntry[key] = val
+}
+
+func (p *Pokedex) Get(key string) (pokeapi.PokemonResponse, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	pokemon, ok := p.pokemonEntry[key]
+	if ok {
+		return pokemon, ok
+	} else {
+		return pokeapi.PokemonResponse{}, ok
+	}
+}
+
 func getCliCommands() map[string]cliCommand {
 	cliCommands := map[string]cliCommand{
+		"catch": {
+			name:        "catch",
+			description: "Attempts to catch a Pokemon and store it in the Pokedex",
+			callback:    commandCatch,
+		},
 		"exit": {
 			name:        "exit",
 			description: "Exits the Pokedex",
