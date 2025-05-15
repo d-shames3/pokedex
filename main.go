@@ -13,6 +13,7 @@ func main() {
 	newScanner := bufio.NewScanner(os.Stdin)
 	config := &apiCallConfig{}
 	cache := pokecache.NewCache(5 * time.Minute)
+	pokedex := newPokedex()
 	for {
 		fmt.Print("Pokedex > ")
 		newScanner.Scan()
@@ -29,7 +30,7 @@ func main() {
 		cliOptions := getCliCommands()
 		cmd, exists := cliOptions[userInputClean[0]]
 		if exists {
-			err := cmd.callback(cache, config, userInputClean[1])
+			err := cmd.callback(cache, config, userInputClean[1], pokedex)
 			if err != nil {
 				fmt.Println(err)
 			}

@@ -32,6 +32,24 @@ type ExploreResponse struct {
 	} `json:"pokemon_encounters"`
 }
 
+type PokemonResponse struct {
+	BaseExperience int    `json:"base_experience"`
+	Height         int    `json:"height"`
+	Name           string `json:"name"`
+	Stats          []struct {
+		BaseStat int `json:"base_stat"`
+		Stat     struct {
+			Name string `json:"name"`
+		} `json:"stat"`
+	} `json:"stats"`
+	Types []struct {
+		Type struct {
+			Name string `json:"name"`
+		} `json:"type"`
+	} `json:"types"`
+	Weight int `json:"weight"`
+}
+
 func UnmarshalPokeapiResponse(res *http.Response, responseType string) (any, error) {
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
@@ -60,6 +78,15 @@ func UnmarshalPokeapiResponse(res *http.Response, responseType string) (any, err
 			return nil, fmt.Errorf("error decoding response body: %v\nerror: %v", body, err)
 		}
 		result = response
+	case "pokemon":
+		var response PokemonResponse
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding response body: %v\nerror: %v", body, err)
+		}
+		result = response
+	default:
+		return nil, fmt.Errorf("unknown response type")
 	}
 
 	return result, nil
