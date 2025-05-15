@@ -246,6 +246,48 @@ func commandCatch(cache *pokecache.Cache, config *apiCallConfig, pokemon string,
 	return nil
 }
 
+func commandInspect(cache *pokecache.Cache, config *apiCallConfig, pokemon string, pokedex *Pokedex) error {
+	if pokemon == "" {
+		return fmt.Errorf("no pokemon specified")
+	}
+
+	pokemonData, ok := pokedex.Get(pokemon)
+	if !ok {
+		fmt.Printf("You have not yet caught %s\n", pokemon)
+		return nil
+	}
+
+	fmt.Printf("Name: %s\n", pokemonData.Name)
+	fmt.Printf("Height: %d\n", pokemonData.Height)
+	fmt.Printf("Weight: %d\n", pokemonData.Weight)
+
+	fmt.Println("Stats:")
+	for _, stat := range pokemonData.Stats {
+		fmt.Printf("  -%s: %d\n", stat.Stat.Name, stat.BaseStat)
+	}
+
+	fmt.Println("Types:")
+	for _, pokemonType := range pokemonData.Types {
+		fmt.Printf("  - %s\n", pokemonType.Type.Name)
+	}
+
+	return nil
+}
+
+func commandPokedex(cache *pokecache.Cache, config *apiCallConfig, pokemon string, pokedex *Pokedex) error {
+	if len(pokedex.pokemonEntry) == 0 {
+		fmt.Println("No pokemon in pokedex")
+		return nil
+	}
+
+	fmt.Println("Your Pokedex:")
+	for key, _ := range pokedex.pokemonEntry {
+		fmt.Printf(" - %s\n", key)
+	}
+
+	return nil
+}
+
 type cliCommand struct {
 	name        string
 	description string
@@ -307,6 +349,11 @@ func getCliCommands() map[string]cliCommand {
 			description: "Displays a help message",
 			callback:    commandHelp,
 		},
+		"inspect": {
+			name:        "inspect",
+			description: "Displays info about Pokemon that have been caught",
+			callback:    commandInspect,
+		},
 		"map": {
 			name:        "map",
 			description: "Fetches next 20 locations from the PokeApi",
@@ -316,6 +363,11 @@ func getCliCommands() map[string]cliCommand {
 			name:        "mapb",
 			description: "Fetches previous 20 locations from the PokeApi",
 			callback:    commandMapb,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Lists the names of all Pokemon currently in the Pokedex",
+			callback:    commandPokedex,
 		},
 	}
 	return cliCommands
